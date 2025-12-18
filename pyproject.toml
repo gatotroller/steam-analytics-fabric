@@ -82,7 +82,9 @@ ignore = [
 known-first-party = ["src"]
 
 [tool.mypy]
+strict = true
 python_version = "3.10"
+ignore_missing_imports = true
 warn_return_any = true
 warn_unused_ignores = true
 disallow_untyped_defs = true
@@ -90,6 +92,10 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 strict_optional = true
 plugins = ["pydantic.mypy"]
+files = ["src"]
+explicit_package_bases = true
+namespace_packages = true
+disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
 module = ["tests.*"]

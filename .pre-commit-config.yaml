@@ -26,4 +26,6 @@ repos:
       - id: mypy
         additional_dependencies:
           - pydantic>=2.5.0
+          - pydantic-settings
+          - tenacity
         args: [--ignore-missing-imports]
