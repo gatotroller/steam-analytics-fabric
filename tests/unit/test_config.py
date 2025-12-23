@@ -4,8 +4,7 @@ import os
 from unittest.mock import patch
 
 import pytest
-
-from src.steam_analytics.config import (
+from steam_analytics.config import (
     FabricConfig,
     LoggingConfig,
     RetryConfig,

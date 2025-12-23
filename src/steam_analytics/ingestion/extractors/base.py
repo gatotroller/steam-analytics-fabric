@@ -20,7 +20,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from src.steam_analytics.config import RetryConfig, get_settings
+from steam_analytics.config import RetryConfig, get_settings
 from steam_analytics.logger import get_logger
 
 # Type variable for response models

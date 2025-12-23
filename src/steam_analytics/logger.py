@@ -7,12 +7,9 @@ and human-readable logs in development (console).
 
 import logging
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import Any, cast
 
 import structlog
-
-if TYPE_CHECKING:
-    from structlog.types import Processor
 
 from steam_analytics.config import get_settings
 
@@ -27,7 +24,7 @@ def setup_logging() -> None:
     settings = get_settings()
 
     # Shared processors for all environments
-    shared_processors: list[Processor] = [
+    shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.StackInfoRenderer(),
@@ -90,4 +87,4 @@ def get_logger(name: str | None = None, **initial_context: Any) -> structlog.Bou
     logger = structlog.get_logger(name)
     if initial_context:
         logger = logger.bind(**initial_context)
-    return logger
+    return cast("structlog.BoundLogger", logger)

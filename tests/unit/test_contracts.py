@@ -1,8 +1,7 @@
 """Tests for data contracts."""
 
 import pytest
-
-from src.steam_analytics.ingestion.contracts import (
+from steam_analytics.ingestion.contracts import (
     PlayerCountResponse,
     PriceOverview,
     ReviewQuerySummary,
@@ -23,8 +22,8 @@ class TestPriceOverview:
             discount_percent=50,
         )
 
-        assert price.initial_dollars == pytest.approx(59.99)
-        assert price.final_dollars == pytest.approx(29.99)
+        assert float(price.initial_dollars) == pytest.approx(59.99)
+        assert float(price.final_dollars) == pytest.approx(29.99)
 
     def test_discount_validation(self) -> None:
         """Test discount percentage bounds."""
