@@ -28,4 +28,6 @@ repos:
           - pydantic>=2.5.0
           - pydantic-settings
           - tenacity
+          - httpx
+          - structlog
         args: [--ignore-missing-imports]
