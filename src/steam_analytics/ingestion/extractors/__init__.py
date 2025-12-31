@@ -19,15 +19,13 @@ from steam_analytics.ingestion.extractors.steam_reviews import SteamReviewsExtra
 from steam_analytics.ingestion.extractors.steam_store import SteamStoreExtractor
 
 __all__ = [
-    # Base classes and errors
     "APIError",
     "BaseExtractor",
     "ExtractionError",
     "ExtractionResult",
     "RateLimitError",
-    "ValidationError",
-    # Extractors
     "SteamPlayerStatsExtractor",
     "SteamReviewsExtractor",
     "SteamStoreExtractor",
+    "ValidationError",
 ]

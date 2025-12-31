@@ -1,0 +1,38 @@
+{
+  "success": 1,
+  "query_summary": {
+    "num_reviews": 20,
+    "review_score": 8,
+    "review_score_desc": "Very Positive",
+    "total_positive": 450000,
+    "total_negative": 120000,
+    "total_reviews": 570000
+  },
+  "reviews": [
+    {
+      "recommendationid": "123456789",
+      "author": {
+        "steamid": "76561198000000000",
+        "num_games_owned": 150,
+        "num_reviews": 25,
+        "playtime_forever": 3600,
+        "playtime_last_two_weeks": 120,
+        "playtime_at_review": 2400,
+        "last_played": 1700000000
+      },
+      "language": "english",
+      "review": "Great game after the patches!",
+      "timestamp_created": 1699000000,
+      "timestamp_updated": 1699000000,
+      "voted_up": true,
+      "votes_up": 150,
+      "votes_funny": 10,
+      "weighted_vote_score": "0.85",
+      "comment_count": 5,
+      "steam_purchase": true,
+      "received_for_free": false,
+      "written_during_early_access": false
+    }
+  ],
+  "cursor": "AoJ4y7HX4fYCdZW5nQI="
+}

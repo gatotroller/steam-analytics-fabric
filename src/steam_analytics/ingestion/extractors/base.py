@@ -235,7 +235,7 @@ class BaseExtractor(ABC, Generic[T]):
             return response
 
         try:
-            return await _request()
+            return await _request()  # type: ignore[no-any-return]
         except RetryError as e:
             self._logger.error(
                 "Request failed after retries",
