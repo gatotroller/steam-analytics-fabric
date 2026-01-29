@@ -23,7 +23,7 @@ def load_fixture(name: str) -> dict[str, Any]:
     # Usamos .open() como pidió Ruff
     with (FIXTURES_DIR / name).open(encoding="utf-8") as f:
         # Usamos cast para jurarle a Mypy que el JSON es un dict
-        return cast(dict[str, Any], json.load(f))
+        return cast("dict[str, Any]", json.load(f))
 
 
 @pytest.fixture
