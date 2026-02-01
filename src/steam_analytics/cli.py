@@ -13,7 +13,6 @@ from typing import Any
 from pydantic import BaseModel
 
 from src.steam_analytics.config import get_settings
-from src.steam_analytics.ingestion.orchestrator import IngestionOrchestrator, IngestionProgress
 from src.steam_analytics.logger import get_logger, setup_logging
 
 # Initialize logging
@@ -34,17 +33,6 @@ class CLIOutput(BaseModel):
 def print_json(output: CLIOutput) -> None:
     """Print output as formatted JSON."""
     print(json.dumps(output.model_dump(), indent=2, default=str))
-
-
-def print_result(result: Any, format: str = "json") -> None:
-    """Print extraction result in specified format."""
-    if format == "json":
-        if hasattr(result, "model_dump"):
-            print(json.dumps(result.model_dump(), indent=2, default=str))
-        else:
-            print(json.dumps(result, indent=2, default=str))
-    else:
-        print(result)
 
 
 async def cmd_extract_store(app_id: int, country: str = "US") -> None:
@@ -156,8 +144,7 @@ async def cmd_test_config() -> None:
             "steam_base_url": settings.steam.base_url,
             "steam_store_url": settings.steam.store_url,
             "steam_requests_per_minute": settings.steam.requests_per_minute,
-            "retry_max_attempts": settings.retry.max_attempts,
-            "log_level": settings.logging.level,
+            "fabric_workspace_id": settings.fabric.workspace_id,
             "api_key_configured": bool(settings.steam.api_key.get_secret_value()),
         },
     )
@@ -173,34 +160,85 @@ Steam Analytics Platform CLI
 Usage: python -m src.cli <command> [arguments]
 
 Commands:
-  test-config                   Test configuration loading
-  extract-store <app_id>        Extract game details from Store API
-  extract-reviews <app_id>      Extract reviews from Reviews API
-  extract-players <app_id>      Extract player count from Player Stats API
-  extract-all <app_id>          Extract all data for a game
+  test-config                 Test configuration loading
+  extract-store <app_id>      Extract game details from Store API
+  extract-reviews <app_id>    Extract reviews from Reviews API
+  extract-players <app_id>    Extract player count from Player Stats API
+  extract-all <app_id>        Extract all data for a game
+  ingest <app_ids>            Run full ingestion pipeline
+
+Options:
+  --target <target>           Output target: 'local' (default) or 'onelake'
 
 Examples:
-  python -m src.cli test-config
-  python -m src.cli extract-store 1091500
-  python -m src.cli extract-reviews 1091500
-  python -m src.cli extract-players 1091500
-  python -m src.cli extract-all 1091500
-
-Popular App IDs:
-  1091500  - Cyberpunk 2077
-  570      - Dota 2
-  730      - Counter-Strike 2
-  440      - Team Fortress 2
-  1245620  - Elden Ring
-  292030   - The Witcher 3
-
-  ingest <app_ids>              Run full ingestion (comma-separated IDs)
-
-Examples:
-  ...
-  python -m src.cli ingest 1091500,570,730
+  python -m src.steam_analytics.cli ingest 1091500,570 --target onelake
 """
     print(usage)
+
+
+async def cmd_ingest(app_ids_str: str, target_str: str = "local") -> None:
+    """
+    Run full ingestion pipeline.
+
+    Args:
+        app_ids_str: Comma-separated app IDs
+        target_str: Output target ('local' or 'onelake')
+    """
+    # 1. IMPORTAMOS OUTPUTTARGET PARA PODER USARLO
+    from src.steam_analytics.ingestion.orchestrator import IngestionOrchestrator, OutputTarget
+
+    # Parse app IDs
+    app_ids = [int(x.strip()) for x in app_ids_str.split(",")]
+
+    # 2. VALIDAMOS EL TARGET
+    try:
+        target = OutputTarget(target_str.lower())
+    except ValueError:
+        print(f"Error: Invalid target '{target_str}'. Use 'local' or 'onelake'.")
+        sys.exit(1)
+
+    print("Steam Analytics Platform - Ingestion")
+    print(f"{'='*50}")
+    print(f"  Target: {target.value}")
+    print(f"  Apps: {len(app_ids)}")
+    print(f"  App IDs: {app_ids[:5]}{'...' if len(app_ids) > 5 else ''}")
+    print(f"{'='*50}\n")
+
+    def on_progress(progress) -> None:
+        bar_length = 30
+        filled = int(bar_length * progress.percentage / 100)
+        bar = "█" * filled + "░" * (bar_length - filled)
+        print(
+            f"\r  [{bar}] {progress.percentage:.1f}% "
+            f"| {progress.completed}/{progress.total} "
+            f"| {progress.current_source or ''} "
+            f"| app_id={progress.current_app_id or ''}     ",
+            end="",
+            flush=True,
+        )
+
+    # 3. PASAMOS EL TARGET AL ORQUESTADOR
+    orchestrator = IngestionOrchestrator(target=target)
+    result = await orchestrator.run(app_ids=app_ids, on_progress=on_progress)
+
+    print("\n")  # New line after progress bar
+
+    # Print summary
+    print("Ingestion Complete!")
+    print(f"{'='*50}")
+    print(f"  Run ID: {result.run_id}")
+    print(f"  Duration: {result.duration_seconds:.2f}s")
+    print(f"  Success Rate: {result.success_rate:.1f}%")
+    print(f"  Batches Written: {len(result.batches_written)}")
+
+    if result.errors:
+        print(f"\nErrors ({len(result.errors)}):")
+        for err in result.errors[:5]:
+            print(f"    - {err['source']}/{err['app_id']}: {err['error'][:50]}")
+
+    print("\nBatches:")
+    for f in result.batches_written:
+        print(f"    - {f}")
 
 
 def main() -> None:
@@ -243,15 +281,23 @@ def main() -> None:
             app_id = int(sys.argv[2])
             asyncio.run(cmd_extract_all(app_id))
 
-        elif command in ("help", "--help", "-h"):
-            print_usage()
-
         elif command == "ingest":
             if len(sys.argv) < 3:
                 print("Error: app_ids required (comma-separated)")
                 sys.exit(1)
             app_ids_str = sys.argv[2]
-            asyncio.run(cmd_ingest(app_ids_str))
+
+            # 4. RESTAURAMOS EL PARSEO DE ARGUMENTOS
+            target = "local"
+            if "--target" in sys.argv:
+                idx = sys.argv.index("--target")
+                if idx + 1 < len(sys.argv):
+                    target = sys.argv[idx + 1]
+
+            asyncio.run(cmd_ingest(app_ids_str, target))
+
+        elif command in ("help", "--help", "-h"):
+            print_usage()
 
         else:
             print(f"Unknown command: {command}")
@@ -270,49 +316,6 @@ def main() -> None:
         )
         print_json(output)
         sys.exit(1)
-
-
-async def cmd_ingest(app_ids_str: str) -> None:
-    """Run full ingestion for a list of app IDs."""
-
-    # Parse app IDs (comma-separated)
-    app_ids = [int(x.strip()) for x in app_ids_str.split(",")]
-
-    logger.info("Starting ingestion", app_ids=app_ids)
-
-    def on_progress(progress: IngestionProgress) -> None:
-        """Print progress updates."""
-        print(
-            f"\rProgress: {progress.completed}/{progress.total} "
-            f"({progress.percentage:.1f}%) - "
-            f"Success: {progress.successful}, Failed: {progress.failed}",
-            end="",
-            flush=True,
-        )
-
-    orchestrator = IngestionOrchestrator()
-    result = await orchestrator.run_full_ingestion(
-        app_ids=app_ids,
-        on_progress=on_progress,
-    )
-
-    print()  # New line after progress
-
-    output = CLIOutput(
-        success=result.success_rate == 100.0,
-        command="ingest",
-        data={
-            "run_id": str(result.run_id),
-            "duration_seconds": result.duration_seconds,
-            "total_apps": result.total_apps,
-            "successful": result.successful,
-            "failed": result.failed,
-            "success_rate": result.success_rate,
-            "batches_written": result.batches_written,
-            "errors": result.errors[:10],  # Limit errors shown
-        },
-    )
-    print_json(output)
 
 
 if __name__ == "__main__":

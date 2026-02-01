@@ -11,7 +11,7 @@ from typing import Any, cast
 
 import structlog
 
-from steam_analytics.config import get_settings
+from src.steam_analytics.config import get_settings
 
 
 def setup_logging() -> None:

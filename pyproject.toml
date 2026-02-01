@@ -24,6 +24,8 @@ dependencies = [
     "tenacity>=8.2.0",            # Retry logic
     "structlog>=24.1.0",          # Structured logging
     "python-dotenv>=1.0.0",       # Environment variables
+    "azure-identity>=1.15.0",
+    "azure-storage-file-datalake>=12.14.0",
 ]
 
 [project.optional-dependencies]
