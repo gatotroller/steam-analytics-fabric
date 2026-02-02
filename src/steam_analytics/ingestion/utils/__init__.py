@@ -5,7 +5,7 @@ Provides common functionality like rate limiting,
 retry logic, and helper functions.
 """
 
-from steam_analytics.ingestion.utils.rate_limiter import (
+from src.steam_analytics.ingestion.utils.rate_limiter import (
     RateLimiter,
     RateLimiterConfig,
     RateLimiterManager,

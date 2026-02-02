@@ -11,18 +11,18 @@ from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
 
-from steam_analytics.config import get_settings
-from steam_analytics.ingestion.contracts import (
+from src.steam_analytics.config import get_settings
+from src.steam_analytics.ingestion.contracts import (
     AppId,
     SteamStoreGame,
 )
-from steam_analytics.ingestion.extractors.base import (
+from src.steam_analytics.ingestion.extractors.base import (
     BaseExtractor,
     ExtractionError,
     ExtractionResult,
     ValidationError,
 )
-from steam_analytics.ingestion.utils.rate_limiter import RateLimiter, RateLimiterConfig
+from src.steam_analytics.ingestion.utils.rate_limiter import RateLimiter, RateLimiterConfig
 
 
 class SteamStoreExtractor(BaseExtractor[SteamStoreGame]):

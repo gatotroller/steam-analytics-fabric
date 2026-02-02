@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
-from steam_analytics.logger import get_logger
+from src.steam_analytics.logger import get_logger
 
 
 @dataclass

@@ -6,17 +6,17 @@ structure of data from various Steam APIs, ensuring type safety
 and validation throughout the ingestion pipeline.
 """
 
-from steam_analytics.ingestion.contracts.steam_player_stats import (
+from src.steam_analytics.ingestion.contracts.steam_player_stats import (
     PlayerCountAPIResponse,
     PlayerCountResponse,
 )
-from steam_analytics.ingestion.contracts.steam_reviews import (
+from src.steam_analytics.ingestion.contracts.steam_reviews import (
     Review,
     ReviewAuthor,
     ReviewQuerySummary,
     SteamReviewsResponse,
 )
-from steam_analytics.ingestion.contracts.steam_store import (
+from src.steam_analytics.ingestion.contracts.steam_store import (
     AppId,
     Category,
     Genre,

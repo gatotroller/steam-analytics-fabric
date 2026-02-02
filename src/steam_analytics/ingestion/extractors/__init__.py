@@ -1,12 +1,16 @@
 """
 Data extractors for Steam APIs.
 
-This module provides extractors for various Steam APIs,
-all built on a common base with retry logic, rate limiting,
-and structured logging.
+Exports the main extractor classes and exceptions for easy access.
+Each extractor handles a specific endpoint (Store, Reviews, Players)
+and encapsulates logic for:
+- Rate limiting
+- Validation
+- Error handling
+- Data parsing
 """
 
-from steam_analytics.ingestion.extractors.base import (
+from src.steam_analytics.ingestion.extractors.base import (
     APIError,
     BaseExtractor,
     ExtractionError,
@@ -14,9 +18,9 @@ from steam_analytics.ingestion.extractors.base import (
     RateLimitError,
     ValidationError,
 )
-from steam_analytics.ingestion.extractors.steam_player_stats import SteamPlayerStatsExtractor
-from steam_analytics.ingestion.extractors.steam_reviews import SteamReviewsExtractor
-from steam_analytics.ingestion.extractors.steam_store import SteamStoreExtractor
+from src.steam_analytics.ingestion.extractors.steam_player_stats import SteamPlayerStatsExtractor
+from src.steam_analytics.ingestion.extractors.steam_reviews import SteamReviewsExtractor
+from src.steam_analytics.ingestion.extractors.steam_store import SteamStoreExtractor
 
 __all__ = [
     "APIError",
@@ -24,8 +28,8 @@ __all__ = [
     "ExtractionError",
     "ExtractionResult",
     "RateLimitError",
+    "ValidationError",
     "SteamPlayerStatsExtractor",
     "SteamReviewsExtractor",
     "SteamStoreExtractor",
-    "ValidationError",
 ]
