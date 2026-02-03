@@ -133,34 +133,29 @@ def build_game_metrics(
 ) -> GoldTableResult:
     """
     Build agg_game_metrics - Current state of each game.
+    CORREGIDO: Convierte Arrays a Strings para compatibilidad con Power BI.
     """
     print("Building agg_game_metrics...")
 
     try:
         # Load Silver data
         print("   Loading Silver tables...")
+        from src.steam_analytics.transformation.gold import (
+            load_current_games,
+            load_current_reviews,
+            load_latest_player_counts,
+        )
+
         games_df = load_current_games(spark, silver_path)
         reviews_df = load_current_reviews(spark, silver_path)
         players_df = load_latest_player_counts(spark, silver_path)
-
-        print(
-            f"   Games: {games_df.count()}, Reviews: {reviews_df.count()}, Players: {players_df.count()}"
-        )
 
         # Join all sources
         print("   Joining data...")
         metrics_df = (
             games_df.alias("g")
-            .join(
-                reviews_df.alias("r"),
-                F.col("g.app_id") == F.col("r.app_id"),
-                "left",
-            )
-            .join(
-                players_df.alias("p"),
-                F.col("g.app_id") == F.col("p.app_id"),
-                "left",
-            )
+            .join(reviews_df.alias("r"), F.col("g.app_id") == F.col("r.app_id"), "left")
+            .join(players_df.alias("p"), F.col("g.app_id") == F.col("p.app_id"), "left")
             .select(
                 # Game identifiers
                 F.col("g.app_id"),
@@ -172,16 +167,16 @@ def build_game_metrics(
                 F.col("g.price_initial_cents"),
                 F.col("g.price_final_cents"),
                 F.col("g.price_discount_percent"),
-                # Computed price fields
                 (F.col("g.price_final_cents") / 100).cast(DoubleType()).alias("price_usd"),
                 F.when(F.col("g.price_discount_percent") > 0, True)
                 .otherwise(False)
                 .alias("is_on_sale"),
-                # Categories
-                F.col("g.genres"),
-                F.col("g.categories"),
-                F.col("g.developers"),
-                F.col("g.publishers"),
+                # --- CORRECCIÓN: CONVERTIR ARRAYS A STRING ---
+                F.concat_ws(", ", F.col("g.genres")).alias("genres"),
+                F.concat_ws(", ", F.col("g.categories")).alias("categories"),
+                F.concat_ws(", ", F.col("g.developers")).alias("developers"),
+                F.concat_ws(", ", F.col("g.publishers")).alias("publishers"),
+                # ---------------------------------------------
                 # Platforms
                 F.col("g.platforms_windows"),
                 F.col("g.platforms_mac"),
@@ -206,7 +201,7 @@ def build_game_metrics(
             )
         )
 
-        # Calculate popularity score (custom metric)
+        # Calculate popularity score
         metrics_df = metrics_df.withColumn(
             "popularity_score",
             F.round(
@@ -219,29 +214,18 @@ def build_game_metrics(
 
         # Write to Gold
         target_path = f"{gold_path}/Tables/agg_game_metrics"
-        record_count = metrics_df.count()
-
-        print(f"   Writing {record_count} records...")
-
         metrics_df.write.format("delta").mode("overwrite").option("overwriteSchema", "true").save(
             target_path
         )
 
-        print(f"   SUCCESS: agg_game_metrics ({record_count} records)")
-
         return GoldTableResult(
-            table_name="agg_game_metrics",
-            records_written=record_count,
-            success=True,
+            table_name="agg_game_metrics", records_written=metrics_df.count(), success=True
         )
 
     except Exception as e:
         print(f"   FAILED: {e}")
         return GoldTableResult(
-            table_name="agg_game_metrics",
-            records_written=0,
-            success=False,
-            error_message=str(e),
+            table_name="agg_game_metrics", records_written=0, success=False, error_message=str(e)
         )
 
 
@@ -251,34 +235,26 @@ def build_price_history(
     gold_path: str,
 ) -> GoldTableResult:
     """
-    Build agg_price_history - Historical price changes from SCD2.
+    Build agg_price_history.
+    CORREGIDO: Convierte Arrays a Strings.
     """
     print("Building agg_price_history...")
 
     try:
-        # Load ALL games history (SCD2 records)
-        print("   Loading dim_games history...")
+        from src.steam_analytics.transformation.gold import load_all_games_history
+
         games_history = load_all_games_history(spark, silver_path)
 
-        total_records = games_history.count()
-        print(f"   Found {total_records} historical records")
-
-        # Transform to price history format
-        print("   Transforming...")
         price_history_df = games_history.select(
-            # Keys
             F.col("app_id"),
             F.col("name"),
-            # SCD2 validity period
             F.col("valid_from").alias("price_effective_from"),
             F.col("valid_to").alias("price_effective_to"),
             F.col("is_current"),
-            # Price data
             F.col("price_currency"),
             F.col("price_initial_cents"),
             F.col("price_final_cents"),
             F.col("price_discount_percent"),
-            # Computed fields
             (F.col("price_initial_cents") / 100).cast(DoubleType()).alias("price_initial_usd"),
             (F.col("price_final_cents") / 100).cast(DoubleType()).alias("price_final_usd"),
             ((F.col("price_initial_cents") - F.col("price_final_cents")) / 100)
@@ -287,47 +263,32 @@ def build_price_history(
             F.when(F.col("price_discount_percent") > 0, True)
             .otherwise(False)
             .alias("is_discounted"),
-            # Categorize discount
             F.when(F.col("price_discount_percent") == 0, "No Discount")
             .when(F.col("price_discount_percent") < 25, "Small (1-24%)")
             .when(F.col("price_discount_percent") < 50, "Medium (25-49%)")
             .when(F.col("price_discount_percent") < 75, "Large (50-74%)")
             .otherwise("Huge (75%+)")
             .alias("discount_tier"),
-            # Genres for filtering
-            F.col("genres"),
-            # Audit
+            # --- CORRECCIÓN: CONVERTIR ARRAY A STRING ---
+            F.concat_ws(", ", F.col("genres")).alias("genres"),
+            # --------------------------------------------
             F.current_timestamp().alias("_refreshed_at"),
-            # Partition column (extract date from valid_from)
             F.date_format(F.col("valid_from"), "yyyy-MM-dd").alias("effective_date"),
         )
 
-        # Write to Gold
         target_path = f"{gold_path}/Tables/agg_price_history"
-        record_count = price_history_df.count()
-
-        print(f"   Writing {record_count} records...")
-
-        # OPTIMIZED: Removed partitionBy("is_current") to avoid skewed partitions
         price_history_df.write.format("delta").mode("overwrite").option(
             "overwriteSchema", "true"
         ).save(target_path)
 
-        print(f"   SUCCESS: agg_price_history ({record_count} records)")
-
         return GoldTableResult(
-            table_name="agg_price_history",
-            records_written=record_count,
-            success=True,
+            table_name="agg_price_history", records_written=price_history_df.count(), success=True
         )
 
     except Exception as e:
         print(f"   FAILED: {e}")
         return GoldTableResult(
-            table_name="agg_price_history",
-            records_written=0,
-            success=False,
-            error_message=str(e),
+            table_name="agg_price_history", records_written=0, success=False, error_message=str(e)
         )
 
 
