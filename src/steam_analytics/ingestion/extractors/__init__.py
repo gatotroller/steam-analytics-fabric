@@ -10,6 +10,11 @@ and encapsulates logic for:
 - Data parsing
 """
 
+from src.steam_analytics.ingestion.extractors.app_list import (
+    AppListExtractor,
+    AppPlayerCount,
+    SteamApp,
+)
 from src.steam_analytics.ingestion.extractors.base import (
     APIError,
     BaseExtractor,
@@ -32,4 +37,7 @@ __all__ = [
     "SteamPlayerStatsExtractor",
     "SteamReviewsExtractor",
     "SteamStoreExtractor",
+    "AppListExtractor",
+    "SteamApp",
+    "AppPlayerCount",
 ]
