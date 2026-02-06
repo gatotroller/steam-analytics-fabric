@@ -6,7 +6,7 @@ based on player counts from official Steam APIs.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 import structlog
@@ -120,7 +120,7 @@ class GameCatalogManager:
             name=name,
             player_count=player_count,
             priority=priority,
-            discovered_at=discovered_at or datetime.utcnow(),
+            discovered_at=discovered_at or datetime.now(timezone.utc),
         )
 
     def get_apps_to_sync(
@@ -140,7 +140,7 @@ class GameCatalogManager:
         Returns:
             List of app_ids to sync
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         apps_to_sync = []
 
         for entry in catalog:
